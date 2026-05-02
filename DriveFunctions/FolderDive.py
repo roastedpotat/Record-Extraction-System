@@ -1,0 +1,49 @@
+# from Google import Create_Service
+import pandas as pd
+
+def get_id(get:object, params:str, identifier:str):
+    service = get
+    param = params
+    folder_identifier = identifier
+    query = f"{param} = '{folder_identifier}' and trashed = false"
+
+    response = (service.files()
+                .list(q= query, orderBy = 'name_natural')
+                .execute())
+    files = response.get('files')
+    nextPageToken = response.get('nextPageToken')
+
+    while nextPageToken:
+        response = (service.files()
+                    .list( q= query,
+                           orderBy= 'name_natural',
+                           nextPageToken= nextPageToken )
+                    .execute())
+        files.extend(response.get('files'))
+        nextPageToken = response.get('nextPageToken')
+
+    if files != []:
+        df = pd.DataFrame(files)
+        list_files = df['id'].to_list()
+        return list_files
+    else:
+        return
+
+def get_ParentFolderId(body: object, text:str):
+    service = body
+    folder_name = text
+    query_type = 'name' # runs query parameter for name using given folder name
+
+    request = get_id(get= service, 
+                     params= query_type, 
+                     identifier= folder_name)
+    for item in request:
+        return item
+
+def Search_Folder(body:object, parent_id:str):
+    service = body
+    folder_id = parent_id
+    query_type = 'parents' # runs query parameter for parents using folder id
+
+    request = get_id(get= service, params= query_type, identifier= folder_id)
+    return request
