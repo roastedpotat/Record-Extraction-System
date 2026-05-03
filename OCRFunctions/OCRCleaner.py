@@ -1,8 +1,6 @@
 import re
-from OCRFunctions.TextRecognition import Record_Grouping_with_Dates
 
-def clean_ocr():
-    dict_of_records = Record_Grouping_with_Dates()
+def clean_ocr(records_dict):
     
     list_of_patterns = [r"mobile no[\W] \d{10}", 
                     r"file[\W|\s]no[\W] \d{2}[\W]\d{2}[\W]\d{2}", 
@@ -13,7 +11,7 @@ def clean_ocr():
                     r"SI.No\s?Nurses Note", 
                     r"\S*[\W]thumbay[\W]int\S*", r"PVR\s?ID[\W] \d{6}", 
                     r"I?DENT AND EMERGE", r"\S*\(\d*-(\s?\d*\)?)", 
-                    r"Thumbay University", 
+                    r"Thumbay University", r"EMERGEN",
                     r"Generic\s?Name\s?Brand\s?\s?All\s?Instructions\s?Route", 
                     r"\s?Administrated\s?on\s?(No\s?)?Administrated\s?By", 
                     r"\s?Service\s?id[\W]\s?", r"CPTCODE[\W]\s?\d*[\W]",
@@ -21,11 +19,14 @@ def clean_ocr():
                     r"\w*[\W]studentpharma\s"] #r"[\W]\d*[\W]\d*[\W]\s\d*",
     
     patterns = "|".join(list_of_patterns)
+    
+    compiled = re.compile(pattern= patterns, flags= re.IGNORECASE)
 
-    for value in dict_of_records.values():
+
+    for value in records_dict.values():
         cleanest = []
         for x in value:
-            clean = re.sub(flags= re.IGNORECASE, pattern= patterns, repl= "", 
+            clean = re.sub(pattern= compiled, repl= "", 
                            string= x)
             cleanest.append(clean)
         yield cleanest
