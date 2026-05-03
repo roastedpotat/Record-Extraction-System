@@ -39,7 +39,7 @@ def edit_img(img_byte):
     if img_byte:
         imgbyte = io.BytesIO(img_byte)
         img = Image.open(imgbyte)
-        ratio = 1920/max(img.size)
+        ratio = 2000/max(img.size)
         new_size = (int(img.size[0] * ratio), int(img.size[1] * ratio))
         resized_img = img.resize(new_size)
         blur_img = resized_img.filter(ImageFilter.GaussianBlur(radius=2)) # Old radius = 2
@@ -150,25 +150,25 @@ prompt = '''### EXTRACTION RULES:
 2. **gender:** Find "DOB | Age | Gender:" and return only the gender value after the second |.
 3. **nationality:** Find "Nationality:" and return only the nationality value.
 4. **marital_status:** Find "Marital Status:" and return only the value after it.
-5. **visit_date / visit_time:** Find the FIRST occurrence of "Visit Date:" followed by DD/MM/YYYY then a 4-digit time. Split into separate fields. If the date separator is missing (e.g. "08/08 2020"), reconstruct it as DD/MM/YYYY.
-6. **Vitals:** Extract temperature, pulse, respiratory rate, BP, and O2 saturation from the FIRST vitals reading only. O2 saturation is the number immediately before or after the first \\% \\symbol in the vitals section.
-7. **pain_scale_score:** Find the FIRST occurrence of "Numerical(X)". Return only the integer X. Do not confuse with GCS.
-8. **gcs:** Find the GCS value in the vitals section. Format is typically XX/15. Return only the numerator.
-9. **triage_category:** Find the FIRST occurrence of "Triage Category:" and return only the number after it.
-10. **chief_complaint:** Find the FIRST occurrence of "Chief Complaint & History of Present Illness" or "Chief Complaint and History of Present Illness". Extract only the text that comes after "Triage Category: X" within that heading. Stop before "Past History" or any other section heading.
-11. **past_history:** Find the FIRST occurrence of "Past History:" or "Past Medical History". Extract only the text directly after it. Stop before "Travel History:". Do not include the label itself.
-12. **travel_history:** Find the FIRST occurrence of "Travel History:". Extract only the text directly after it. If the value is a date, noise, or navigation text, use null.
-13. **current_medication:** Find the FIRST occurrence of "Current Medication". Extract only text directly after it. Stop at "Medical Prescription" or "Medication Order".
-14. **psychosocial:** Find the FIRST occurrence of "Psychosocial:" and extract only the text after it. Do not include occupation.
-15. **occupation:** Find the FIRST occurrence of "Occupation:" and extract only the text directly after it.
-16. **primary_icd:** Find the Provisional Diagnosis table, that lists all the ICD entries. From that table, take the ONLY ICD entry that is immediately followed by the word. Return that entry as: [Code] [Description]. Ignore all other entries.
-17. **other_icd:** Return the remaining codes only (no descriptions) found in Provisional Diagnosis table where ICD is NOT followed by "Yes", comma-separated.
-18. **disease_grouping:** Unless specified, leave as null.
-18. **remarks:** Only add remarks if it is found after Provisional Diagnosis Table and before Medication Order Table, or else leave it as null.
-19. **advice_health_education:** Find the FIRST occurrence of "Advice & Health Education:" and return only the text immediately after it. Stop at "Education Given To:" or any other label.
-20. **condition_at_disposition:** Find "Condition at the time of Disposition:" or "Condition at the tine of Disposition:" and return only the value after it.
-21. **disposition_type:** Find "Disposition Type:" and return only the value after it.
-22. **disposition_date / disposition_time:** Scan to the very BOTTOM of the OCR text.  Find the FINAL instance of a date (DD/MM/YYYY) and a 4-digit time.  This value must appear AFTER the "Disposition Type" section. If there are multiple timestamps at the end, choose the one that is physically closest to the end of the document string.
+5. **primary_icd:** Find the Provisional Diagnosis table, that lists all the ICD entries. From that table, take the ONLY ICD entry that is immediately followed by the word. Return that entry as: [Code] [Description]. Ignore all other entries.
+6. **visit_date / visit_time:** Find the FIRST occurrence of "Visit Date:" followed by DD/MM/YYYY then a 4-digit time. Split into separate fields. If the date separator is missing (e.g. "08/08 2020"), reconstruct it as DD/MM/YYYY.
+7. **Vitals:** Extract temperature, pulse, respiratory rate, BP, and O2 saturation from the FIRST vitals reading only. O2 saturation is the number immediately before or after the first \\% \\symbol in the vitals section.
+8. **disposition_date / disposition_time:** Go to the absolute end of the provided text. Search backwards from the very last character until you hit the first date and time pair. This value is likely the discharge/disposition time. Ignore all earlier timestamps found in the Triage or Vitals sections. Ensure the time you extract is specifically the one associated with the end of the patient's visit.
+9. **pain_scale_score:** Find the FIRST occurrence of "Numerical(X)". Return only the integer X. Do not confuse with GCS.
+10. **gcs:** Find the GCS value in the vitals section. Format is typically XX/15. Return only the numerator.
+11. **triage_category:** Find the FIRST occurrence of "Triage Category:" and return only the number after it.
+12. **chief_complaint:** Find the FIRST occurrence of "Chief Complaint & History of Present Illness" or "Chief Complaint and History of Present Illness". Extract only the text that comes after "Triage Category: X" within that heading. Stop before "Past History" or any other section heading.
+13. **past_history:** Find the FIRST occurrence of "Past History:" or "Past Medical History". Extract only the text directly after it. Stop before "Travel History:". Do not include the label itself.
+14. **travel_history:** Find the FIRST occurrence of "Travel History:". Extract only the text directly after it. If the value is a date, noise, or navigation text, use null.
+15. **current_medication:** Find the FIRST occurrence of "Current Medication". Extract only text directly after it. Stop at "Medical Prescription" or "Medication Order".
+16. **psychosocial:** Find the FIRST occurrence of "Psychosocial:" and extract only the text after it. Do not include occupation.
+17. **occupation:** Find the FIRST occurrence of "Occupation:" and extract only the text directly after it.
+18. **other_icd:** Return the remaining codes only (no descriptions) found in Provisional Diagnosis table where ICD is NOT followed by "Yes", comma-separated.
+19. **disease_grouping:** Unless specified, leave as null.
+20. **remarks:** Only add remarks if it is found after Provisional Diagnosis Table and before Medication Order Table, or else leave it as null.
+21. **advice_health_education:** Find the FIRST occurrence of "Advice & Health Education:" and return only the text immediately after it. Stop at "Education Given To:" or any other label.
+22. **condition_at_disposition:** Find "Condition at the time of Disposition:" or "Condition at the tine of Disposition:" and return only the value after it.
+23. **disposition_type:** Find "Disposition Type:" and return only the value after it.
 '''
 
 ocr_engine = PaddleOCR(
@@ -176,7 +176,7 @@ ocr_engine = PaddleOCR(
     use_doc_unwarping=False,
     use_textline_orientation= True,
     text_recognition_batch_size=10, 
-    text_det_limit_side_len= 1920,
+    text_det_limit_side_len= 2000,
     text_det_limit_type= 'max',
     text_det_box_thresh= 0.5,
     text_det_thresh= 0.2,
