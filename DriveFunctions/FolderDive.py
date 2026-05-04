@@ -47,3 +47,8 @@ def Search_Folder(body:object, parent_id:str):
 
     request = get_id(get= service, params= query_type, identifier= folder_id)
     return request
+
+def get_folder_name(body, folder_id):
+    request = body.files().get(fileId= folder_id, fields='name').execute()
+    name = request['name']
+    return name
