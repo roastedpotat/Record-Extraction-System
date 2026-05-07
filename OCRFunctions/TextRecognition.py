@@ -12,8 +12,8 @@ def edit_img(img_byte):
         resized_img = img.resize(new_size)
         blur_img = resized_img.filter(ImageFilter.GaussianBlur(radius=2)) # Old radius = 2
         contrast_img = ImageEnhance.Contrast(blur_img).enhance(2.0) # Old Contrast = 2
-        sharp_img = ImageEnhance.Sharpness(contrast_img).enhance(3.0) # Old Sharpness = 1.5 , Best = 2.5
-        autocontrast_img = ImageOps.autocontrast(sharp_img, cutoff=4)
+        sharp_img = ImageEnhance.Sharpness(contrast_img).enhance(2.5) # Old Sharpness = 1.5 , Best = 2.5
+        autocontrast_img = ImageOps.autocontrast(sharp_img, cutoff=5) # Best was either 3 or 4
         readable_img = asarray(autocontrast_img)
         img.close()
         return readable_img
@@ -28,7 +28,7 @@ def Text_from_images(ocr, readable_list):
 
 def Record_Grouping_with_Dates(texts):
     record_groups = dict()
-    current_key = None
+    current_key = "Unknown"
     query = r"Visit Date[\W|\w]\s?(\d{2})[\W|\w]\s?(\d{2})[\W|\w]\s?(\d{4})"
     for records in texts:
         search = re.search(query, records, re.IGNORECASE)
