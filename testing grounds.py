@@ -1,5 +1,5 @@
 import re
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 
 def pattern_compiler(list_of_patterns):
     patterns = "|".join(list_of_patterns)
@@ -33,6 +33,6 @@ outside_list_of_patterns = [r"mobile no[\W] \d{10}",
 diction = {"26/07/2020" : ["Woah thats crazy 12/31/12312"]}
 compiled = pattern_compiler(list_of_patterns= outside_list_of_patterns)
 
-with ThreadPoolExecutor() as executor:
+with ProcessPoolExecutor() as executor:
     response = list(executor.map(ocr_clean, diction.values()))
     print(response)
