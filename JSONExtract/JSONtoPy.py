@@ -5,7 +5,7 @@ def extract_json(llm_output):
     response = llm_output
     jsondict = json.loads(response)
 
-    list_of_patterns = [r"age", r"marital", r"nationality", r"date_of_birth",
+    list_of_patterns = [r"marital", r"nationality", r"date_of_birth",
                         r"visit_date", r"visit_time", r"temperature", r"pulse", 
                         r"respiratory", r"bp", r"o2", r"pain_scale", r"gcs", 
                         r"height", r"weight", r"bmi", r"triage", r"chief", 
