@@ -42,6 +42,3 @@ def llm_response(llm, clean_records, prompt, system_content, column_names): # re
             )
             output = response["choices"][0]["message"]["content"]
             yield output
-''' Also removed:
-REQUIRED JSON TEMPLATE:
-                        {json_template}'''
