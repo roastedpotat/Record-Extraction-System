@@ -1,4 +1,4 @@
-# Record Extraction System (RES)
+# Record Extraction System (RES) (Work In Progress)
 ### A program designed to retrieve medical record data from hospital databases for research purposes, specifically to automate data entry. This system utilizes advanced OCR techniques and Large Language Models (LLMs) to transform raw image data into structured JSON formats.
 
 ## 🚀 Overview
@@ -22,3 +22,5 @@ RES automates the labor-intensive process of manual data entry from scanned medi
 3.  **Master Cleaning:** A regex-based pipeline strips administrative "noise" and redundant tables.
 4.  **Visit Grouping:** Individual pages are correlated and combined by visit date.
 5.  **LLM Extraction:** The structured text is processed by Qwen2.5 to extract high-value clinical data points.
+
+This system is a work in progress! It is a personal project based on my background in Biomedical Science and my recent interest in the art of programming!!
