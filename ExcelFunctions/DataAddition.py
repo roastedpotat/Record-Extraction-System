@@ -1,6 +1,6 @@
 # from openpyxl import load_workbook
 import pandas as pd
-from datetime import datetime
+
 def specific_id_row(dataframe, specific_id):
     rows = dataframe.loc[dataframe['Comp ID']==int(specific_id)]
     return rows
@@ -8,10 +8,13 @@ def specific_id_row(dataframe, specific_id):
 # Make sure main scripts has rows as an object of specific_id_row()
 
 def row_num_checker(rows, total_records):
-    flag = False
     total_extract = len(total_records)
     if len(rows)==total_extract:
-            flag = True
+            flag = 0
+    elif len(rows)>total_extract:
+            flag = 0
+    else:
+        flag = total_extract - len(rows)
     return flag
 
 def check_row_data(rows):
@@ -20,7 +23,7 @@ def check_row_data(rows):
     for i in rows.index:
         row = rows.loc[i]
         if any(str(row.get(key=col)) == 'nan' for col in columns):
-            indices.append(i)
+            indices.append(int(i))
     return indices
     
 def data_per_row(df, records, comp_id):
