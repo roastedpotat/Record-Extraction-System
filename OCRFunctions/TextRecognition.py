@@ -7,6 +7,13 @@ def edit_img(img_byte):
     if img_byte:
         imgbyte = io.BytesIO(img_byte)
         img = Image.open(imgbyte)
+
+        exif = img.getexif()
+        orientation = exif.get(274)
+
+        if orientation is not None and orientation != 1:
+            img = ImageOps.exif_transpose(img)
+            
         ratio = 2000/max(img.size)
         new_size = (int(img.size[0] * ratio), int(img.size[1] * ratio))
         resized_img = img.resize(new_size)
