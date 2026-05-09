@@ -1,6 +1,7 @@
 import time
 start_time = time.perf_counter()
 import os
+from openpyxl import load_workbook
 from llama_cpp import Llama
 from concurrent.futures import ThreadPoolExecutor
 from LLMFunctions.LlamaResponse import llm_response
@@ -17,7 +18,12 @@ from paddleocr import PaddleOCR
 import paddle
 
 # Test Updates ================================================================
+def add_data_to_excel(data, ws, starting_column, row_num):
+    for i, value in enumerate(data):
+        ws.cell(row=int(row_num) + 2, column=starting_column + i, value=value)
 
+        print(f"Added data to row {row_num + 2}")
+    return True
 # =============================================================================
 
 CLIENT_FILE = 'credentials.json'
@@ -32,6 +38,9 @@ sheet_name= "Visit Recs"
 file = load_in_file(filepath= filepath, sheet_name= sheet_name)
 
 column_names = get_column_names(file)
+
+wb = load_workbook(filename= filepath)
+ws = wb[sheet_name]
 
 system_content = '''You are a strict medical data extractor. Extract only 
                   what is explicitly present in the text. Never invent or 
@@ -63,12 +72,8 @@ prompt = '''### EXTRACTION RULES:
 '''
 
 paddle.set_flags({
-"FLAGS_fraction_of_cpu_memory_to_use": 1.0, # Use 10% of total CPU memory
+"FLAGS_fraction_of_cpu_memory_to_use": 1.0,
 "FLAGS_allocator_strategy": "naive_best_fit", # Optimize memory fragmentation
-"FLAGS_eager_delete_scope": True, # Reduce memory usage by deleting scope synchronously
-"FLAGS_eager_delete_tensor_gb": 0.0, # Enable garbage collection
-"FLAGS_fast_eager_deletion_mode": True, # Use fast garbage collection
-"FLAGS_use_pinned_memory": False, # Disable pinned memory for lower CPU usage
 })
 
 ocr_engine = PaddleOCR(
@@ -76,10 +81,9 @@ ocr_engine = PaddleOCR(
     use_doc_unwarping=False,
     use_textline_orientation= False,
     text_recognition_batch_size=10, 
-    precision="fp32",
     text_det_limit_side_len= 4000,
     text_det_limit_type= 'max',
-    text_det_box_thresh= 0.3,
+    text_det_box_thresh= 0.5,
     text_det_thresh= 0.2,
     text_det_unclip_ratio=1.6, #Best results with 1.6
     lang='en',
@@ -116,27 +120,37 @@ for folder in subfolder_ids:
     with ThreadPoolExecutor(max_workers=16) as Executor:
         if image_bytes:
             readable_img = list(Executor.map(edit_img, image_bytes))
-
+    
     texts = list(Text_from_images(ocr= ocr_engine, readable_list= readable_img))
     print(texts)
     print("OCR done!")
     record = Record_Grouping_with_Dates(texts= texts)
     row_count_check = row_num_checker(rows= rows, total_records= record)
     row_data_check = check_row_data(rows= rows)
-    if not row_data_check or not row_count_check:
+    if not row_data_check or row_count_check:
+        if row_count_check > 0:
+            new_row = max(row_data_check) + 3
+            ws.insert_rows(new_row, row_count_check)
+        for i in range(row_count_check):
+            row_data_check.append(max(row_data_check) + 1)
+            i = 0
         new_record = data_per_row(records= record, df= file, comp_id= comp_id)
         print("Cleaning Started!")
         clean_records = master_clean_ocr(records_dict= new_record)
         print(f"\n {clean_records} \n")
         print("LLM processing...")
-        llm_step = list(llm_response(llm= llm_engine, clean_records= clean_records, 
-                                    column_names= column_names, prompt= prompt, 
-                                    system_content= system_content))
-        print(llm_step)
-
-        for record in llm_step:
-            data = extract_json(llm_output= record)
-            print(data)
+        llm_step = list(llm_response(llm= llm_engine, 
+                                     clean_records= clean_records, 
+                                     column_names= column_names, 
+                                     prompt= prompt, 
+                                     system_content= system_content))
+        for i,record in enumerate(llm_step):
+            data = extract_json(record)
+            add_data_to_excel(data= data, 
+                              ws= ws,
+                              starting_column= 6, 
+                              row_num= row_data_check[i])
+wb.save(filename= filepath)
 
 end_time = time.perf_counter()
 elapsed_time = end_time - start_time
