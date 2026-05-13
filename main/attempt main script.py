@@ -8,7 +8,7 @@ from LLMFunctions.LlamaResponse import llm_response
 from DriveFunctions.Google import Create_Service
 from DriveFunctions.FolderDive import get_ParentFolderId, Search_Folder, get_folder_name
 from DriveFunctions.GetImages import get_image_bytes
-from OCRFunctions.TextRecognition import Text_from_images, edit_img, Record_Grouping_with_Dates
+from OCRFunctions.TextRecognition import Text_from_images, edit_img, Record_Grouping_with_Dates, new_edit_image
 from OCRFunctions.OCRCleaner import master_clean_ocr
 from ExcelFunctions.OpenExcel import load_in_file, get_column_names
 from ExcelFunctions.DataAddition import specific_id_row, row_num_checker, check_row_data, data_per_row
@@ -47,12 +47,12 @@ system_content = '''You are a strict medical data extractor. Extract only
                   infer data. If a field is not found, use null.'''
 
 prompt = '''### EXTRACTION RULES:
-1. **primary_icd:** Find the "Provisional Diagnosis" table. Identify the single row that has the word "Yes" immediately after "MRD Verified". Extract that row's ICD code and description. If the ICD code appears clean and well-formed (e.g. M17.0, E11.9, J30.9), return it in the format: [Code] [Description]. If the code looks corrupted or garbled, return only the first letter of the code followed by the description (e.g. [M] Bilateral primary osteoarthritis of knee). If no row has "Yes", return null.
-2. **other_icd:** From the "Provisional Diagnosis" table, list all rows that do NOT have "Yes" after "MRD Verified". For each, if the ICD code appears clean and well-formed, return the full code. If the code looks corrupted or garbled, return only its first letter. Return as a comma-separated list. Do not include descriptions.
-3. **chief_complaint:** Find the FIRST occurrence of "Chief Complaint & History of Present Illness" or "Chief Complaint and History of Present Illness". Extract only the text that comes after "Triage Category: X" within that heading. Stop before "Past History" or any other section heading.
+1. **primary_icd:** Found after "Provisional Diagnosis". If the word "Yes" is seen after an ICD code, return the ICD code that was seen with the "Yes". Return as "Code - Description".
+2. **other_icd:** From the "Provisional Diagnosis" table, list all ICD Codes that do NOT have "Yes" after "MRD Verified". Return as comma-separated ICD codes.
+3. **chief_complaint:** Find the FIRST occurrence of "Chief Complaint & History of Present Illness" or "Chief Complaint and History of Present Illness". Extract only the text that comes after "Triage Category: X" after that heading. Stop before "Past History" or any other section heading.
 4. **date_of_birth:** Find the text "DOB | Age | Gender:". Extract the value immediately following the label but before the first vertical bar (|). Ensure the date is formatted as DD/MM/YYYY.
 5. **nationality:** Find "Nationality:" and return only the nationality value.
-6. **Vitals:** Extract temperature, pulse, respiratory rate, BP, and O2 saturation from the FIRST vitals reading only. O2 saturation is the number immediately before or after the first \\% \\symbol in the vitals section.
+6. **Vitals:** Extract from the "Nursing Assessment" section the patient's, temperature, pulse, respiratory rate, BP, and O2 saturation readings. O2 saturation is the number immediately before or after the first \\% \\symbol in the vitals section.
 7. **visit_date / visit_time:** Find the FIRST occurrence of "Visit Date:" followed by DD/MM/YYYY then a 4-digit time. Split into separate fields. If the date separator is missing (e.g. "08/08 2020"), reconstruct it as DD/MM/YYYY.
 8. **disposition_date / disposition_time:** Go to the absolute end of the provided text. Search backwards from the very last character until you hit the first date and time pair. This value is likely the discharge/disposition time, from this enter the DD/MM/YYYY for date. Ignore all earlier timestamps found in the Triage or Vitals sections. Ensure the time you extract is specifically the one associated with the end of the patient's visit.
 9. **pain_scale_score:** Find the FIRST occurrence of "Numerical(X)". Return only the integer X. Do not confuse with GCS.
@@ -80,23 +80,24 @@ ocr_engine = PaddleOCR(
     use_doc_orientation_classify=False,
     use_doc_unwarping=False,
     use_textline_orientation= False,
-    text_recognition_batch_size=10, 
-    text_det_limit_side_len= 4000,
+    text_recognition_batch_size=2, 
+    text_det_limit_side_len= 2000,
     text_det_limit_type= 'max',
     text_det_box_thresh= 0.5,
-    text_det_thresh= 0.2,
+    text_det_thresh= 0.5,
     text_det_unclip_ratio=1.6, #Best results with 1.6
     lang='en',
     device= 'cpu',
     enable_mkldnn=True,
     mkldnn_cache_capacity=10,
-    cpu_threads=4,
+    cpu_threads=4
     )
 
 llm_engine = Llama(model_path= r"G:\\models\\qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf",
                 chat_format= "chatml",
                 flash_attn= True,
                 n_gpu_layers=-1,
+                temperature= 0.2,
                 seed= 1337,
                 n_ctx= 8192,
                 verbose= False)
@@ -119,7 +120,7 @@ for folder in subfolder_ids:
     readable_img = []
     with ThreadPoolExecutor(max_workers=16) as Executor:
         if image_bytes:
-            readable_img = list(Executor.map(edit_img, image_bytes))
+            readable_img = list(Executor.map(new_edit_image, image_bytes))
     
     texts = list(Text_from_images(ocr= ocr_engine, readable_list= readable_img))
     print(texts)
@@ -137,7 +138,7 @@ for folder in subfolder_ids:
         new_record = data_per_row(records= record, df= file, comp_id= comp_id)
         print("Cleaning Started!")
         clean_records = master_clean_ocr(records_dict= new_record)
-        print(f"\n {clean_records} \n")
+        print(clean_records)
         print("LLM processing...")
         llm_step = list(llm_response(llm= llm_engine, 
                                      clean_records= clean_records, 
@@ -146,11 +147,12 @@ for folder in subfolder_ids:
                                      system_content= system_content))
         for i,record in enumerate(llm_step):
             data = extract_json(record)
-            add_data_to_excel(data= data, 
+            print(f"\n\nLLM Output for record {i+1}:\n{data}\n\n")
+            '''add_data_to_excel(data= data, 
                               ws= ws,
                               starting_column= 6, 
                               row_num= row_data_check[i])
-wb.save(filename= filepath)
+wb.save(filename= filepath)'''
 
 end_time = time.perf_counter()
 elapsed_time = end_time - start_time

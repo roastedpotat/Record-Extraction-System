@@ -1,7 +1,20 @@
 import io
 import re
+import cv2 as cv
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
-from numpy import asarray
+import numpy as np
+
+def new_edit_image(img_bytes):
+    if img_bytes:
+        image_bytes = io.BytesIO(img_bytes)
+        nparr = np.frombuffer(image_bytes.read(), np.uint8)
+        img = cv.imdecode(nparr, cv.IMREAD_COLOR)
+        sharp_kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
+
+        resized_img = cv.resize(img, (1920, 1080))
+        resized_img = cv.GaussianBlur(resized_img, (7, 7), 0)
+        resized_img = cv.filter2D(resized_img, -1, sharp_kernel)
+        return resized_img
 
 def edit_img(img_byte):
     if img_byte:
@@ -17,20 +30,20 @@ def edit_img(img_byte):
         ratio = 2000/max(img.size)
         new_size = (int(img.size[0] * ratio), int(img.size[1] * ratio))
         resized_img = img.resize(new_size)
-        blur_img = resized_img.filter(ImageFilter.GaussianBlur(radius=2)) # Old radius = 2
+        blur_img = resized_img.filter(ImageFilter.GaussianBlur(radius=0.5)) # Old radius = 2
         contrast_img = ImageEnhance.Contrast(blur_img).enhance(2.0) # Old Contrast = 2
         sharp_img = ImageEnhance.Sharpness(contrast_img).enhance(2.5) # Old Sharpness = 1.5 , Best = 2.5
-        autocontrast_img = ImageOps.autocontrast(sharp_img, cutoff=5) # Best was either 3 or 4
-        readable_img = asarray(autocontrast_img)
+        autocontrast_img = ImageOps.autocontrast(sharp_img, cutoff=3) # Best was either 3 or 4
+        readable_img = np.asarray(autocontrast_img)
         img.close()
         return readable_img
 
 
 def Text_from_images(ocr, readable_list):
-    results = ocr.predict(readable_list)
+    results = ocr.predict_iter(readable_list)
     for item in results:
         texts = item.get('rec_texts', [])
-        string = " ".join(texts)
+        string = "\n".join(texts)
         yield string
 
 def Record_Grouping_with_Dates(texts):
