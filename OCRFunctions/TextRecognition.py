@@ -16,29 +16,6 @@ def new_edit_image(img_bytes):
         resized_img = cv.filter2D(resized_img, -1, sharp_kernel)
         return resized_img
 
-def edit_img(img_byte):
-    if img_byte:
-        imgbyte = io.BytesIO(img_byte)
-        img = Image.open(imgbyte)
-
-        exif = img.getexif()
-        orientation = exif.get(274)
-
-        if orientation is not None and orientation != 1:
-            img = ImageOps.exif_transpose(img)
-            
-        ratio = 2000/max(img.size)
-        new_size = (int(img.size[0] * ratio), int(img.size[1] * ratio))
-        resized_img = img.resize(new_size)
-        blur_img = resized_img.filter(ImageFilter.GaussianBlur(radius=0.5)) # Old radius = 2
-        contrast_img = ImageEnhance.Contrast(blur_img).enhance(2.0) # Old Contrast = 2
-        sharp_img = ImageEnhance.Sharpness(contrast_img).enhance(2.5) # Old Sharpness = 1.5 , Best = 2.5
-        autocontrast_img = ImageOps.autocontrast(sharp_img, cutoff=3) # Best was either 3 or 4
-        readable_img = np.asarray(autocontrast_img)
-        img.close()
-        return readable_img
-
-
 def Text_from_images(ocr, readable_list):
     results = ocr.predict_iter(readable_list)
     for item in results:
