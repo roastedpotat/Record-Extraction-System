@@ -13,11 +13,11 @@ def create_json_template(column_names):
         "required": list(template.keys())
     }
 
-
-def llm_response(llm, clean_records, prompt, system_content, column_names): # removed json_template for test
+def llm_response(llm, clean_records, prompt, system_content, column_names, primary_icd): # removed json_template for test
     if clean_records:
         schema = create_json_template(column_names)
-        for ocr_result in clean_records:
+        for ocr_result, icd in zip(clean_records, primary_icd):
+            icd_instruction = f"\n### PRIMARY ICD (already extracted, do not change):\nThe primary_icd field must be set to: '{icd} - [find the matching description from the Provisional Diagnosis table]'" if icd else ""
             response = llm.create_chat_completion(
                 messages=[
                     {
@@ -26,7 +26,7 @@ def llm_response(llm, clean_records, prompt, system_content, column_names): # re
                     },
                     {
                         "role":"user",
-                        "content":f'''{prompt} 
+                        "content":f'''{prompt}{icd_instruction}
                         ### OUTPUT: 
                         Return ONLY raw JSON. No explanation, no markdown, no 
                         preamble.
